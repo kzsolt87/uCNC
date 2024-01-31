@@ -46,9 +46,17 @@ volatile static uint32_t esp32_io_counter_reload;
 #endif
 hw_timer_t *esp32_step_timer;
 
-void esp32_wifi_bt_init(void);
-void esp32_wifi_bt_flush(uint8_t *buffer);
-void esp32_wifi_bt_process(void);
+#ifdef MCU_HAS_WIFI
+void esp32_wifi_init(void);
+void esp32_wifi_process(void);
+void mcu_wifi_cmd(void);
+#endif
+#ifdef MCU_HAS_BLUETOOTH
+void esp32_bt_init(void);
+void esp32_bt_flush(uint8_t *buffer);
+void esp32_bt_process(void);
+void mcu_bt_cmd(void);
+#endif
 
 #ifndef FLASH_EEPROM_SIZE
 #define FLASH_EEPROM_SIZE 1024
@@ -533,7 +541,12 @@ void mcu_init(void)
 	mcu_i2c_config(I2C_FREQ);
 #endif
 
-	esp32_wifi_bt_init();
+#ifdef MCU_HAS_WIFI
+	esp32_wifi_init();
+#endif
+#ifdef MCU_HAS_BLUETOOTH
+	esp32_bt_init();
+#endif
 	mcu_enable_global_isr();
 }
 
@@ -881,7 +894,12 @@ void mcu_dotasks(void)
 #endif
 #endif
 
-	esp32_wifi_bt_process();
+#ifdef MCU_HAS_WIFI
+	esp32_wifi_process();
+#endif
+#ifdef MCU_HAS_BLUETOOTH
+	esp32_bt_process();
+#endif
 }
 
 // Non volatile memory
@@ -1042,6 +1060,23 @@ uint8_t mcu_get_servo(uint8_t servo)
 	}
 #endif
 	return 0;
+}
+
+#ifdef BOARD_HAS_CUSTOM_SYSTEM_COMMANDS
+uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t next_char)
+{
+	uint8_t result = STATUS_INVALID_STATEMENT;
+#ifdef MCU_HAS_WIFI
+	result = mcu_wifi_cmd();
+	if (result != STATUS_INVALID_STATEMENT)
+	{
+		return result;
+	}
+#endif
+#ifdef MCU_HAS_BLUETOOTH
+	result = mcu_bt_cmd();
+#endif
+	return result;
 }
 
 #endif
