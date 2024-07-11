@@ -51,13 +51,19 @@ extern "C"
 #define WIZNET_SPI MCU_SPI
 #endif
 
-void wiznet_spi_config(void);
-uint8_t wiznet_spi_transmit(uint8_t c);
-void wiznet_spi_transmit_data(uint8_t *c, uint16_t len);
-void wiznet_spi_start(void);
-void wiznet_spi_stop(void);
+/**
+ * 
+ * wiznet_spi.c
+ * 
+ */
+void wiznet_critical_section_enter(void);
+void wiznet_critical_section_exit(void);
 void wiznet_cs_select(void);
 void wiznet_cs_deselect(void);
+uint8_t wiznet_getc(void);
+void wiznet_putc(uint8_t c);
+void wiznet_read(uint8_t *buff, uint16_t len);
+void wiznet_write(uint8_t *buff, uint16_t len);
 
 #ifdef __cplusplus
 }
