@@ -1,4 +1,4 @@
-#include "wiznet_ethernet.h"
+#include "wiznet_spi.h"
 
 /**
  * 

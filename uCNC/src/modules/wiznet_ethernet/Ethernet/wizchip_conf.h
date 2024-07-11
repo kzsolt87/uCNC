@@ -57,7 +57,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "../wiznet_ethernet.h"
 #include <stdint.h>
 /**
  * @brief Select WIZCHIP.
@@ -70,6 +69,8 @@ extern "C" {
 #define W5200						5200
 #define W5300						5300
 #define W5500						5500
+
+#include "../wiznet_spi.h"
 
 #ifndef _WIZCHIP_
 #define _WIZCHIP_                      W5500   // W5100, W5100S, W5200, W5300, W5500

@@ -17,8 +17,9 @@
 */
 
 #include "../../cnc.h"
-#include "wiznet_ethernet.h"
 #include "Ethernet/wizchip_conf.h"
+#include "Internet/DHCP/dhcp.h"
+#include "Ethernet/socket.h"
 
 #ifndef TELNET_PORT
 #define TELNET_PORT 23
@@ -40,21 +41,70 @@
 #define WIZNET_SPI MCU_SPI
 #endif
 
+#define ETH_USE_DHCP
+
 /* Network */
 static wiz_NetInfo g_net_info =
 		{
 				.mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56}, // MAC address
-				.ip = {192, 168, 1, 90},													 // IP address
-				.sn = {255, 255, 255, 0},													 // Subnet Mask
-				.gw = {192, 168, 1, 1},													 // Gateway
+				.ip = {192, 168, 1, 90},										 // IP address
+				.sn = {255, 255, 255, 0},										 // Subnet Mask
+				.gw = {192, 168, 1, 1},											 // Gateway
 				.dns = {8, 8, 8, 8},												 // DNS server
 				.dhcp = NETINFO_DHCP												 // DHCP enable/disable
 };
 
-void wiznet_initialize(void)
-{
-	protocol_send_feedback("Initialize ethernet chip");
+/**
+ *
+ * DHCP client
+ *
+ */
+#ifdef ETH_USE_DHCP
 
+#define DATA_BUF_SIZE 2048
+uint8_t gDATABUF[DATA_BUF_SIZE];
+
+static FORCEINLINE bool wiznet_dhcp_leased(void)
+{
+	/**
+	 * clock to the DHCP
+	 */
+	static uint32_t dhcp_timer = 0;
+
+	if (dhcp_timer < mcu_millis())
+	{
+		dhcp_timer = mcu_millis() + 1000;
+		DHCP_time_handler();
+	}
+
+	uint8_t dhcp = DHCP_run();
+	if (dhcp != DHCP_IP_LEASED)
+	{
+		return false;
+	}
+
+	// DHCP leased. Can configure network
+	getIPfromDHCP(g_net_info.ip);
+	getGWfromDHCP(g_net_info.gw);
+	getDNSfromDHCP(g_net_info.dns);
+	getSNfromDHCP(g_net_info.sn);
+
+	return true;
+}
+#endif;
+
+/**
+ * Board init and status
+ *
+ */
+
+static FORCEINLINE void wiznet_connect(void)
+{
+	ctlnetwork(CN_SET_NETINFO, (void *)&g_net_info);
+}
+
+static FORCEINLINE void wiznet_init(void)
+{
 	reg_wizchip_cris_cbfunc(wiznet_critical_section_enter, wiznet_critical_section_exit);
 	reg_wizchip_cs_cbfunc(wiznet_cs_select, wiznet_cs_deselect);
 	reg_wizchip_spi_cbfunc(wiznet_getc, wiznet_putc);
@@ -70,7 +120,28 @@ void wiznet_initialize(void)
 	if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memsize) == -1)
 	{
 		protocol_send_feedback("Ethernet chip was not found");
+		return;
 	}
+
+	ctlnetwork(CN_SET_NETINFO, (void *)&g_net_info);
+
+#ifdef ETH_USE_DHCP
+	if (g_net_info.dhcp == NETINFO_DHCP)
+	{
+		DHCP_init(_WIZCHIP_SOCK_NUM_ - 1, gDATABUF);
+	}
+#endif;
+}
+
+static FORCEINLINE bool wiznet_connected(void)
+{
+	uint8_t temp;
+	if (ctlwizchip(CW_GET_PHYLINK, (void *)&temp) < 0)
+	{
+		return false;
+	}
+
+	return (temp == PHY_LINK_ON);
 }
 
 bool eth_clientok(void)
@@ -78,9 +149,8 @@ bool eth_clientok(void)
 	static uint32_t next_info = 30000;
 	static bool connected = false;
 	uint8_t str[64];
-	uint8_t temp;
 
-	if (ctlwizchip(CW_GET_PHYLINK, (void *)&temp) != PHY_LINK_ON)
+	if (!wiznet_connected())
 	{
 		connected = false;
 		if (next_info > mcu_millis())
@@ -94,16 +164,28 @@ bool eth_clientok(void)
 
 	if (!connected)
 	{
-		if (ctlnetwork(CN_SET_NETINFO, (void *)&g_net_info) != -1)
+#ifdef ETH_USE_DHCP
+		if (g_net_info.dhcp == NETINFO_DHCP)
 		{
-			connected = true;
-			protocol_send_feedback("Connected to ETH");
-			sprintf((char *)str, "IP>%d.%d.%d.%d", g_net_info.ip[0], g_net_info.ip[1], g_net_info.ip[2], g_net_info.ip[3]);
-			protocol_send_feedback((const char *)str);
-			//eth_telnet_server.begin();
+			if (!wiznet_dhcp_leased())
+			{
+				return false;
+			}
 		}
-	}
+#endif
 
+		wiznet_connect();
+		connected = true;
+		protocol_send_feedback("Connected to ETH");
+		sprintf((char *)str, "IP>%d.%d.%d.%d", g_net_info.ip[0], g_net_info.ip[1], g_net_info.ip[2], g_net_info.ip[3]);
+		protocol_send_feedback((const char *)str);
+		socket(0, Sn_MR_TCP, TELNET_PORT, 0);
+		// eth_telnet_server.begin();
+	}
+	
+	if(listen(0)){
+		connect(0,)
+	}
 	// EthernetClient client = eth_telnet_server.available();
 	// if (client)
 	// {
@@ -160,7 +242,7 @@ DECL_MODULE(wiznet_ethernet)
 	io_set_output(WIZNET_CS);
 	softspi_config(WIZNET_SPI, 0, 14000000UL);
 
-	wiznet_initialize();
+	wiznet_init();
 
 	// network_initialize(g_net_info);
 // 		// serial_stream_register(&web_pendant_stream);
