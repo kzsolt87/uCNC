@@ -579,7 +579,6 @@ void mcu_uart_putc(uint8_t c)
 
 void mcu_uart_flush(void)
 {
-
 	if (!(COM_UART->CR1 & USART_CR1_TXEIE)) // not ready start flushing
 	{
 		COM_UART->CR1 |= (USART_CR1_TXEIE);

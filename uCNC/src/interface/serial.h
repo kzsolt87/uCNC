@@ -51,7 +51,28 @@ extern "C"
 		struct serial_stream_ *next;
 	} serial_stream_t;
 
+/**
+ * Helper macros
+ */
 #define DECL_SERIAL_STREAM(name, getc_cb, available_cb, clear_cb, putc_cb, flush_cb) serial_stream_t name = {getc_cb, available_cb, clear_cb, putc_cb, flush_cb, NULL}
+#define SERIAL_STREAM_CREATE_AND_BIND(name, tx_buffer, rx_buffer, flush_cb)   \
+	uint8_t name##_getc(void)                                                   \
+	{                                                                           \
+		uint8_t c = 0;                                                            \
+		BUFFER_DEQUEUE(rx_buffer, &c);                                            \
+		return c;                                                                 \
+	}                                                                           \
+	uint8_t name##_available(void) { return BUFFER_READ_AVAILABLE(rx_buffer); } \
+	void name##_clear(void) { BUFFER_CLEAR(rx_buffer); }                        \
+	void name##_putc(uint8_t c)                                                 \
+	{                                                                           \
+		while (BUFFER_FULL(tx_buffer))                                            \
+		{                                                                         \
+			flush_cb();                                                             \
+		}                                                                         \
+		BUFFER_ENQUEUE(tx_buffer, &c);                                            \
+	}                                                                           \
+	DECL_SERIAL_STREAM(name, name##_getc, name##_available, name##_clear, name##_putc, flush_cb)
 
 	void serial_init();
 

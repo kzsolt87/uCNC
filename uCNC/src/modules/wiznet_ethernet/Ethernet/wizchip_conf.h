@@ -71,6 +71,7 @@ extern "C" {
 #define W5500						5500
 
 #include "../wiznet_spi.h"
+#undef MR
 
 #ifndef _WIZCHIP_
 #define _WIZCHIP_                      W5500   // W5100, W5100S, W5200, W5300, W5500

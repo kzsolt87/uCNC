@@ -25,6 +25,10 @@
 #define TELNET_PORT 23
 #endif
 
+#ifndef TELNET_SOCKET_N
+#define TELNET_SOCKET_N 0
+#endif
+
 #ifndef WEBSERVER_PORT
 #define WEBSERVER_PORT 80
 #endif
@@ -43,6 +47,12 @@
 
 #define ETH_USE_DHCP
 
+#ifndef ETH_USE_DHCP
+#define NETWORK_DHCP NETINFO_STATIC
+#else
+#define NETWORK_DHCP NETINFO_DHCP
+#endif
+
 /* Network */
 static wiz_NetInfo g_net_info =
 		{
@@ -51,8 +61,57 @@ static wiz_NetInfo g_net_info =
 				.sn = {255, 255, 255, 0},										 // Subnet Mask
 				.gw = {192, 168, 1, 1},											 // Gateway
 				.dns = {8, 8, 8, 8},												 // DNS server
-				.dhcp = NETINFO_DHCP												 // DHCP enable/disable
+				.dhcp = NETWORK_DHCP												 // DHCP enable/disable
 };
+
+typedef struct client_socket_
+{
+	uint8_t socket;
+	uint16_t port;
+	ring_buffer_t *rx_buffer;
+	ring_buffer_t *tx_buffer;
+} client_socket_t;
+
+/**
+ *
+ * Creates a raw TCP socket to stream the Grbl protocol
+ * Creates a ring buffer to both TX and RX communications
+ * Creates a serial stream and binds both TX and RX ring buffers
+ *
+ */
+
+#ifndef ETH_TX_BUFFER_SIZE
+#define ETH_TX_BUFFER_SIZE 64
+#endif
+
+// TX and RX ring buffers
+DECL_BUFFER(uint8_t, eth_tx, ETH_TX_BUFFER_SIZE);
+DECL_BUFFER(uint8_t, eth_rx, RX_BUFFER_SIZE);
+static client_socket_t telnet_client;
+
+// TX serial stream flush callback
+// checks if the socket is opended and sends the data
+// if not simply discards the TX buffer to prevent stalling (assumes there is no client or the connection failed)
+void eth_serial_stream_flush(void)
+{
+	if (getSn_SR(telnet_client.socket) == SOCK_ESTABLISHED)
+	{
+		int16_t avail = 0;
+		if ((avail = BUFFER_READ_AVAILABLE(eth_tx)) > 0)
+		{
+			uint8_t buffer[avail];
+			BUFFER_READ(eth_tx, buffer, avail, avail);
+			send(telnet_client.socket, buffer, sizeof(buffer));
+		}
+	}
+	else
+	{
+		BUFFER_CLEAR(eth_tx);
+	}
+}
+
+// creates the serial streams calls and binds the TX and RX buffer
+SERIAL_STREAM_CREATE_AND_BIND(eth_serial_stream, eth_tx, eth_rx, eth_serial_stream_flush);
 
 /**
  *
@@ -88,10 +147,10 @@ static FORCEINLINE bool wiznet_dhcp_leased(void)
 	getGWfromDHCP(g_net_info.gw);
 	getDNSfromDHCP(g_net_info.dns);
 	getSNfromDHCP(g_net_info.sn);
-
 	return true;
 }
-#endif;
+
+#endif
 
 /**
  * Board init and status
@@ -101,6 +160,59 @@ static FORCEINLINE bool wiznet_dhcp_leased(void)
 static FORCEINLINE void wiznet_connect(void)
 {
 	ctlnetwork(CN_SET_NETINFO, (void *)&g_net_info);
+}
+
+static void socket_server_run(client_socket_t *client)
+{
+	int16_t ret = 0;
+	int16_t avail = 0;
+
+	// Check the socket status
+	switch (getSn_SR(client->socket))
+	{
+	case SOCK_ESTABLISHED:
+		// Check if data is available to read
+		if ((ret = getSn_RX_RSR(client->socket)) > 0)
+		{
+			// check available space to read data
+			avail = BUFFER_WRITE_AVAILABLE(client->rx_buffer);
+			if (avail)
+			{
+				uint8_t buffer[avail];
+				ret = recv(client->socket, buffer, sizeof(buffer));
+				for (int16_t i = 0; i < ret; i++)
+				{
+					uint8_t c = buffer[i];
+					if (mcu_com_rx_cb(c))
+					{
+						BUFFER_ENQUEUE(eth_rx, &c);
+					}
+				}
+			}
+		}
+		break;
+
+	case SOCK_CLOSE_WAIT:
+		// Close the socket when the connection is closed
+		close(client->socket);
+		break;
+
+	case SOCK_CLOSED:
+		// Reopen the socket if it was closed
+		if ((ret = socket(client->socket, Sn_MR_TCP, client->port, SF_IO_NONBLOCK)) < 0)
+		{
+			// Handle socket error
+			return;
+		}
+
+		// Put the socket into listen mode
+		if ((ret = listen(client->socket)) < 0)
+		{
+			// Handle listen error
+			return;
+		}
+		break;
+	}
 }
 
 static FORCEINLINE void wiznet_init(void)
@@ -130,7 +242,7 @@ static FORCEINLINE void wiznet_init(void)
 	{
 		DHCP_init(_WIZCHIP_SOCK_NUM_ - 1, gDATABUF);
 	}
-#endif;
+#endif
 }
 
 static FORCEINLINE bool wiznet_connected(void)
@@ -144,7 +256,7 @@ static FORCEINLINE bool wiznet_connected(void)
 	return (temp == PHY_LINK_ON);
 }
 
-bool eth_clientok(void)
+bool eth_connection_ok(void)
 {
 	static uint32_t next_info = 30000;
 	static bool connected = false;
@@ -175,59 +287,22 @@ bool eth_clientok(void)
 #endif
 
 		wiznet_connect();
-		connected = true;
 		protocol_send_feedback("Connected to ETH");
 		sprintf((char *)str, "IP>%d.%d.%d.%d", g_net_info.ip[0], g_net_info.ip[1], g_net_info.ip[2], g_net_info.ip[3]);
 		protocol_send_feedback((const char *)str);
-		socket(0, Sn_MR_TCP, TELNET_PORT, 0);
-		// eth_telnet_server.begin();
+		connected = true;
 	}
-	
-	if(listen(0)){
-		connect(0,)
-	}
-	// EthernetClient client = eth_telnet_server.available();
-	// if (client)
-	// {
-	// 	if (eth_telnet_client)
-	// 	{
-	// 		if (eth_telnet_client.connected())
-	// 		{
-	// 			eth_telnet_client.stop();
-	// 		}
-	// 	}
-	// 	eth_telnet_client = eth_telnet_server.accept();
-	// 	eth_telnet_client.println("[MSG:New client connected]");
-	// 	return false;
-	// }
-	// else if (eth_telnet_client)
-	// {
-	// 	if (eth_telnet_client.connected())
-	// 	{
-	// 		return true;
-	// 	}
-	// }
-	return false;
+
+	return true;
 }
 
 bool eth_loop(void *arg)
 {
 	// eth_telnet_server.statusreport();
-	if (eth_clientok())
+	if (eth_connection_ok())
 	{
-		// while (eth_telnet_client.available() > 0)
-		// {
-		// 	uint8_t c = eth_telnet_client.read();
-		// 	if (mcu_com_rx_cb(c))
-		// 	{
-		// 		if (BUFFER_FULL(eth_rx))
-		// 		{
-		// 			c = OVF;
-		// 		}
-
-		// 		BUFFER_ENQUEUE(eth_rx, &c);
-		// 	}
-		// }
+		// handle the telnet client
+		socket_server_run(&telnet_client);
 	}
 
 	return EVENT_CONTINUE;
@@ -243,6 +318,15 @@ DECL_MODULE(wiznet_ethernet)
 	softspi_config(WIZNET_SPI, 0, 14000000UL);
 
 	wiznet_init();
+
+	// setup telnet client
+	telnet_client.socket = TELNET_SOCKET_N;
+	telnet_client.port = TELNET_PORT;
+	telnet_client.rx_buffer = &eth_rx;
+	telnet_client.tx_buffer = &eth_tx;
+
+	// register the ethernt stream buffer to the main protocol
+	serial_stream_register(&eth_serial_stream);
 
 	// network_initialize(g_net_info);
 // 		// serial_stream_register(&web_pendant_stream);
