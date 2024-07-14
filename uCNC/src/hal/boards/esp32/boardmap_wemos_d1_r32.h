@@ -50,13 +50,19 @@ extern "C"
 #define CS_RES_ISR
 #define CS_RES_PULLUP
 
-// Setup limit pins
-#define LIMIT_Z_BIT 19 // assigns LIMIT_Z pin
-#define LIMIT_Z_ISR		 // assigns LIMIT_Z ISR
-#define LIMIT_Y_BIT 5	 // assigns LIMIT_Y pin
-#define LIMIT_Y_ISR		 // assigns LIMIT_Y ISR
-#define LIMIT_X_BIT 13 // assigns LIMIT_X pin
-#define LIMIT_X_ISR		 // assigns LIMIT_X ISR
+// // Setup limit pins
+// #define LIMIT_Z_BIT 19 // assigns LIMIT_Z pin
+// #define LIMIT_Z_ISR		 // assigns LIMIT_Z ISR
+// #define LIMIT_Y_BIT 5	 // assigns LIMIT_Y pin
+// #define LIMIT_Y_ISR		 // assigns LIMIT_Y ISR
+// #define LIMIT_X_BIT 13 // assigns LIMIT_X pin
+// #define LIMIT_X_ISR		 // assigns LIMIT_X ISR
+
+#define SPI_CLK_BIT 18
+#define SPI_SDO_BIT 23
+#define SPI_SDI_BIT 19
+#define SPI_CS_BIT 5
+#define DOUT28_BIT 5	 // assigns LIMIT_Y pin
 
 // Setup probe pin
 #define PROBE_BIT 39
@@ -76,7 +82,7 @@ extern "C"
 
 // Setup generic IO Pins
 // spindle dir
-#define DOUT0_BIT 18
+// #define DOUT0_BIT 18
 
 // coolant
 #define DOUT2_BIT 34
