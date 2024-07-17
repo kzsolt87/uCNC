@@ -1,6 +1,6 @@
 //*****************************************************************************
 //
-//! \file dns.h
+//! \file wizchip_dns.h
 //! \brief DNS APIs Header file.
 //! \details Send DNS query & Receive DNS reponse. 
 //! \version 1.1.0
@@ -48,8 +48,8 @@
 //
 //*****************************************************************************
 
-#ifndef	_DNS_H_
-#define	_DNS_H_
+#ifndef	_WIZCHIP_DNS_H_
+#define	_WIZCHIP_DNS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,7 +68,7 @@ extern "C" {
  * @todo SHOULD BE defined it equal as or greater than your Domain name lenght + null character(1)
  * @note SHOULD BE careful to stack overflow because it is allocated 1.5 times as MAX_DOMAIN_NAME in stack.
  */
-#define  MAX_DOMAIN_NAME   128       // for example "www.google.com"
+#define  MAX_DOMAIN_NAME   16       // for example "www.google.com"
 
 #define	MAX_DNS_RETRY     2        ///< Requery Count
 #define	DNS_WAIT_TIME     3        ///< Wait response time. unit 1s.
@@ -106,4 +106,4 @@ void DNS_time_handler(void);
 }
 #endif
 
-#endif	/* _DNS_H_ */
+#endif	/* _WIZCHIP_DNS_H_ */

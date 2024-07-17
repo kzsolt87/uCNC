@@ -1,5 +1,5 @@
 /*
-	Name: wiznet_ethernet.h
+	Name: w5XXX_ethernet.h
 	Description: Implements a Wiznet Ethernet interface for µCNC.
 
 	Copyright: Copyright (c) João Martins
@@ -16,8 +16,8 @@
 	See the	GNU General Public License for more details.
 */
 
-#ifndef WIZNET_ETHERNET_H
-#define WIZNET_ETHERNET_H
+#ifndef WIZCHIP_SPI_H
+#define WIZCHIP_SPI_H
 
 #ifdef __cplusplus
 extern "C"
@@ -53,17 +53,17 @@ extern "C"
 
 /**
  * 
- * wiznet_spi.c
+ * w5XXX_spi.c
  * 
  */
-void wiznet_critical_section_enter(void);
-void wiznet_critical_section_exit(void);
-void wiznet_cs_select(void);
-void wiznet_cs_deselect(void);
-uint8_t wiznet_getc(void);
-void wiznet_putc(uint8_t c);
-void wiznet_read(uint8_t *buff, uint16_t len);
-void wiznet_write(uint8_t *buff, uint16_t len);
+void w5XXX_critical_section_enter(void);
+void w5XXX_critical_section_exit(void);
+void w5XXX_cs_select(void);
+void w5XXX_cs_deselect(void);
+uint8_t w5XXX_getc(void);
+void w5XXX_putc(uint8_t c);
+void w5XXX_read(uint8_t *buff, uint16_t len);
+void w5XXX_write(uint8_t *buff, uint16_t len);
 
 #ifdef __cplusplus
 }

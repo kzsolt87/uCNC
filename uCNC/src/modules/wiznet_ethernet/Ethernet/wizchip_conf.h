@@ -57,6 +57,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 #include <stdint.h>
 /**
  * @brief Select WIZCHIP.
@@ -70,7 +71,7 @@ extern "C" {
 #define W5300						5300
 #define W5500						5500
 
-#include "../wiznet_spi.h"
+#include "../wizchip_spi.h"
 #undef MR
 
 #ifndef _WIZCHIP_
@@ -164,8 +165,8 @@ extern "C" {
  * @todo you should select interface mode as chip. Select one of @ref \_WIZCHIP_IO_MODE_SPI_ , @ref \_WIZCHIP_IO_MODE_BUS_DIR_ or @ref \_WIZCHIP_IO_MODE_BUS_INDIR_
  */
 #ifndef _WIZCHIP_IO_MODE_
-   #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_DIR_
-// #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_INDIR_
+//   #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_DIR_
+ #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_INDIR_
 #endif
 
 //A20150601 : Define the unit and bus width of IO DATA. 
@@ -200,8 +201,7 @@ extern "C" {
  *       ex> <code> #define \_WIZCHIP_IO_BASE_      0x00008000 </code>
  */
 #if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS_
-//	#define _WIZCHIP_IO_BASE_				0x60000000	// for 5100S IND
-	#define _WIZCHIP_IO_BASE_				0x68000000	// for W5300
+	#define _WIZCHIP_IO_BASE_				0x60000000	// for 5100S IND
 #elif _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_SPI_
 	#define _WIZCHIP_IO_BASE_				0x00000000	// for 5100S SPI
 #endif
@@ -235,7 +235,7 @@ extern "C" {
 typedef struct __WIZCHIP
 {
    uint16_t  if_mode;               ///< host interface mode
-   uint8_t   id[8];                 ///< @b WIZCHIP ID such as @b 5100, @b 5100S, @b 5200, @b 5500, and so on.
+   uint8_t   id[7];                 ///< @b WIZCHIP ID such as @b 5100, @b 5200, @b 5500, and so on.
    /**
     * The set of critical section callback func.
     */
@@ -387,6 +387,13 @@ typedef enum
 #define PHY_POWER_NORM           0     ///< PHY power normal mode
 #define PHY_POWER_DOWN           1     ///< PHY power down mode 
 
+/***
+ * BSD socket API definitions
+ */
+#ifndef BSD_TEST_PORT
+#define BSD_TEST_PORT 5000
+#endif
+
 
 #if _WIZCHIP_ == W5100S || _WIZCHIP_ == W5500
 /**
@@ -423,6 +430,7 @@ typedef enum
 typedef struct wiz_NetInfo_t
 {
    uint8_t mac[6];  ///< Source Mac Address
+   uint8_t _pad[2]; ///< avoid 'non-aligned exception' in some cpu. @20201109
    uint8_t ip[4];   ///< Source IP Address
    uint8_t sn[4];   ///< Subnet Mask 
    uint8_t gw[4];   ///< Gateway IP Address

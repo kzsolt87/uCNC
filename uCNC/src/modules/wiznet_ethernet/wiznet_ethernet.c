@@ -18,8 +18,8 @@
 
 #include "../../cnc.h"
 #include "Ethernet/wizchip_conf.h"
-#include "Internet/DHCP/dhcp.h"
-#include "Ethernet/socket.h"
+#include "Internet/DHCP/wizchip_dhcp.h"
+#include "Ethernet/wizchip_socket.h"
 
 #ifndef TELNET_PORT
 #define TELNET_PORT 23
@@ -101,7 +101,7 @@ void eth_serial_stream_flush(void)
 		{
 			uint8_t buffer[avail];
 			BUFFER_READ(eth_tx, buffer, avail, avail);
-			send(telnet_client.socket, buffer, sizeof(buffer));
+			wizchip_send(telnet_client.socket, buffer, sizeof(buffer));
 		}
 	}
 	else
@@ -179,7 +179,7 @@ static void socket_server_run(client_socket_t *client)
 			if (avail)
 			{
 				uint8_t buffer[avail];
-				ret = recv(client->socket, buffer, sizeof(buffer));
+				ret = wizchip_recv(client->socket, buffer, sizeof(buffer));
 				for (int16_t i = 0; i < ret; i++)
 				{
 					uint8_t c = buffer[i];
@@ -194,19 +194,19 @@ static void socket_server_run(client_socket_t *client)
 
 	case SOCK_CLOSE_WAIT:
 		// Close the socket when the connection is closed
-		close(client->socket);
+		wizchip_close(client->socket);
 		break;
 
 	case SOCK_CLOSED:
 		// Reopen the socket if it was closed
-		if ((ret = socket(client->socket, Sn_MR_TCP, client->port, SF_IO_NONBLOCK)) < 0)
+		if ((ret = wizchip_socket(client->socket, Sn_MR_TCP, client->port, SF_IO_NONBLOCK)) < 0)
 		{
 			// Handle socket error
 			return;
 		}
 
 		// Put the socket into listen mode
-		if ((ret = listen(client->socket)) < 0)
+		if ((ret = wizchip_listen(client->socket)) < 0)
 		{
 			// Handle listen error
 			return;
@@ -217,14 +217,14 @@ static void socket_server_run(client_socket_t *client)
 
 static FORCEINLINE void wiznet_init(void)
 {
-	reg_wizchip_cris_cbfunc(wiznet_critical_section_enter, wiznet_critical_section_exit);
-	reg_wizchip_cs_cbfunc(wiznet_cs_select, wiznet_cs_deselect);
-	reg_wizchip_spi_cbfunc(wiznet_getc, wiznet_putc);
+	reg_wizchip_cris_cbfunc(w5XXX_critical_section_enter, w5XXX_critical_section_exit);
+	reg_wizchip_cs_cbfunc(w5XXX_cs_select, w5XXX_cs_deselect);
+	reg_wizchip_spi_cbfunc(w5XXX_getc, w5XXX_putc);
 #ifdef USE_SPI_DMA
 	reg_wizchip_spiburst_cbfunc(wiznet_read, wiznet_write);
 #endif
 	/* Deselect the FLASH : chip select high */
-	wiznet_cs_deselect();
+	w5XXX_cs_deselect();
 
 	/* W5x00 initialize */
 	uint8_t memsize[2][_WIZCHIP_SOCK_NUM_] = {{2, 2, 2, 2, 2, 2, 2, 2}, {2, 2, 2, 2, 2, 2, 2, 2}};

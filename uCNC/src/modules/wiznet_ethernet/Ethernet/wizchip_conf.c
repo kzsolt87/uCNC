@@ -327,8 +327,7 @@ int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg)
          ((uint8_t*)arg)[2] = WIZCHIP.id[2];
          ((uint8_t*)arg)[3] = WIZCHIP.id[3];
          ((uint8_t*)arg)[4] = WIZCHIP.id[4];
-         ((uint8_t*)arg)[5] = WIZCHIP.id[5];
-         ((uint8_t*)arg)[6] = 0;
+         ((uint8_t*)arg)[5] = 0;
          break;
    #if _WIZCHIP_ == W5100S || _WIZCHIP_ == W5500
       case CW_RESET_PHY:
@@ -428,71 +427,73 @@ int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize)
    if(txsize)
    {
       tmp = 0;
-//M20150601 : For integrating with W5300
-#if _WIZCHIP_ == W5300
+   //M20150601 : For integrating with W5300
+   #if _WIZCHIP_ == W5300
 		for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
-			if(txsize[i] > 64) return -1;   //No use 64KB even if W5300 support max 64KB memory allocation
+			if(txsize[i] >= 64) return -1;   //No use 64KB even if W5300 support max 64KB memory allocation
 			tmp += txsize[i];
 			if(tmp > 128) return -1;
 		}
 		if(tmp % 8) return -1;
-#else
+   #else
 		for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
 			tmp += txsize[i];
 
-#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100 and w5100s
+		#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100 and w5100s
 			if(tmp > 8) return -1;
-#else
+		#else
 			if(tmp > 16) return -1;
-#endif
+		#endif
 		}
-#endif
 		for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
-#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100
+		#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100
 			j = 0;
 			while((txsize[i] >> j != 1)&&(txsize[i] !=0)){j++;}
 			setSn_TXBUF_SIZE(i, j);
-#else
+		#else
 			setSn_TXBUF_SIZE(i, txsize[i]);
-#endif
-		}	
+		#endif
+		}
+
+	#endif
    }
 
    if(rxsize)
    {
       tmp = 0;
-#if _WIZCHIP_ == W5300
+   #if _WIZCHIP_ == W5300
       for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
-			if(rxsize[i] > 64) return -1;   //No use 64KB even if W5300 support max 64KB memory allocation
+			if(rxsize[i] >= 64) return -1;   //No use 64KB even if W5300 support max 64KB memory allocation
 			tmp += rxsize[i];
 			if(tmp > 128) return -1;
 		}
 		if(tmp % 8) return -1;
-#else
+   #else
 		for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
 			tmp += rxsize[i];
-#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100 and w5100s
+		#if _WIZCHIP_ < W5200	//2016.10.28 peter add condition for w5100 and w5100s
 			if(tmp > 8) return -1;
-#else
+		#else
 			if(tmp > 16) return -1;
-#endif
+		#endif
 		}
-#endif
+
 		for(i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++)
 		{
-#if _WIZCHIP_ < W5200	// add condition for w5100
+		#if _WIZCHIP_ < W5200	// add condition for w5100
 			j = 0;
 			while((rxsize[i] >> j != 1)&&(txsize[i] !=0)){j++;}
 			setSn_RXBUF_SIZE(i, j);
-#else
+		#else
 			setSn_RXBUF_SIZE(i, rxsize[i]);
-#endif
+		#endif
 		}
+	#endif
    }
    return 0;
 }

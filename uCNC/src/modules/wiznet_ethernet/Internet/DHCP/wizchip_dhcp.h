@@ -1,6 +1,6 @@
 //*****************************************************************************
 //
-//! \file dhcp.h
+//! \file wizchip_dhcp.h
 //! \brief DHCP APIs Header file.
 //! \details Processig DHCP protocol as DISCOVER, OFFER, REQUEST, ACK, NACK and DECLINE.
 //! \version 1.1.1
@@ -43,9 +43,8 @@
 //! THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
-#ifndef _DHCP_H_
-#define _DHCP_H_
-
+#ifndef _WIZCHIP_DHCP_H_
+#define _WIZCHIP_DHCP_H_
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -154,8 +153,10 @@ void getDNSfromDHCP(uint8_t* ip);
  */
 uint32_t getDHCPLeasetime(void);
 
+uint32_t getDHCPTick1s(void);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif	/* _DHCP_H_ */
+#endif	/* _WIZCHIP_DHCP_H_ */
