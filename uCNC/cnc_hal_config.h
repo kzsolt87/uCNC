@@ -105,7 +105,7 @@ extern "C"
 /**
  * Uncomment this feature to enable X and Y homing simultaneously
  */
-// #define ENABLE_XY_SIMULTANEOUS_HOMING
+#define ENABLE_XY_SIMULTANEOUS_HOMING
 
 /**
  * Rotational axis - force relative distances

@@ -75,7 +75,7 @@ BIN = $(CP) -O binary -S
 # CFLAGS
 #######################################
 # cpu
-CPU ?= atmega328p
+CPU ?= atmega1284p
 FREQ ?= 16000000L
 BOARD ?= UNO
 
