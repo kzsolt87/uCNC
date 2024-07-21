@@ -4633,7 +4633,7 @@ extern "C"
 		(0x3FF & ((ADCH << 8) | ADCL));                 \
 	}
 
-#ifdef PROBE_ISR
+#if defined(PROBE) && defined(PROBE_ISR)
 #define mcu_enable_probe_isr() (SETFLAG(PROBE_ISRREG, PROBE_ISR_MASK))
 #define mcu_disable_probe_isr() (CLEARFLAG(PROBE_ISRREG, PROBE_ISR_MASK))
 #else
@@ -4649,16 +4649,6 @@ extern "C"
 #define US_DELAY_TICK2 (F_CPU / 4000000UL)
 
 #define mcu_free_micros() ((1000UL * RTC_TCNT) / RTC_OCRA)
-
-#ifdef MCU_HAS_SPI
-#define mcu_spi_xmit(X)           \
-	({                              \
-		SPDR = X;                     \
-		while (!(SPSR & (1 << SPIF))) \
-			;                           \
-		SPDR;                         \
-	})
-#endif
 
 #ifdef MCU_HAS_ONESHOT_TIMER
 #define mcu_start_timeout() \

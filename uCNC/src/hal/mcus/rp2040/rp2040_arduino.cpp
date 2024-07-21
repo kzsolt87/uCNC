@@ -102,55 +102,44 @@ wifi_settings_t wifi_settings;
 #endif
 
 #ifdef BOARD_HAS_CUSTOM_SYSTEM_COMMANDS
-uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t next_char)
+bool mcu_custom_grbl_cmd(void *args)
 {
-	uint8_t str[128];
-	uint8_t arg[ARG_MAX_LEN];
-	uint8_t has_arg = (next_char == '=');
+	grbl_cmd_args_t *cmd_params = (grbl_cmd_args_t *)args;
+	uint8_t str[64];
+	char arg[ARG_MAX_LEN];
+	uint8_t has_arg = (cmd_params->next_char == '=');
 	memset(arg, 0, sizeof(arg));
-	if (has_arg)
-	{
-		uint8_t c = serial_getc();
-		uint8_t i = 0;
-		while (c)
-		{
-			arg[i++] = c;
-			if (i >= ARG_MAX_LEN)
-			{
-				return STATUS_INVALID_STATEMENT;
-			}
-			c = serial_getc();
-		}
-	}
 
 #ifdef ENABLE_BLUETOOTH
-	if (!strncmp((const char *)grbl_cmd_str, "BTH", 3))
+	if (!strncmp((const char *)(cmd_params->cmd), "BTH", 3))
 	{
-		if (!strcmp((const char *)&grbl_cmd_str[3], "ON"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[3], "ON"))
 		{
 			SerialBT.begin(BAUDRATE, SERIAL_8N1);
 			protocol_send_feedback((const char *)"Bluetooth enabled");
 			bt_on = 1;
 			settings_save(bt_settings_offset, &bt_on, 1);
 
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[3], "OFF"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[3], "OFF"))
 		{
 			SerialBT.end();
 			protocol_send_feedback((const char *)"Bluetooth disabled");
 			bt_on = 0;
 			settings_save(bt_settings_offset, &bt_on, 1);
 
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 	}
 #endif
 #ifdef MCU_HAS_WIFI
-	if (!strncmp((const char *)grbl_cmd_str, "WIFI", 4))
+	if (!strncmp((const char *)(cmd_params->cmd), "WIFI", 4))
 	{
-		if (!strcmp((const char *)&grbl_cmd_str[4], "ON"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "ON"))
 		{
 			WiFi.disconnect();
 			switch (wifi_settings.wifi_mode)
@@ -182,22 +171,30 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 
 			wifi_settings.wifi_on = 1;
 			settings_save(wifi_settings_offset, (uint8_t *)&wifi_settings, sizeof(wifi_settings_t));
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "OFF"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "OFF"))
 		{
 			WiFi.disconnect();
 			wifi_settings.wifi_on = 0;
 			settings_save(wifi_settings_offset, (uint8_t *)&wifi_settings, sizeof(wifi_settings_t));
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "SSID"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "SSID"))
 		{
 			if (has_arg)
 			{
-				uint8_t len = strlen((const char *)arg);
+				int8_t len = parser_get_grbl_cmd_arg(arg, ARG_MAX_LEN);
+
+				if (len < 0)
+				{
+					*(cmd_params->error) = STATUS_INVALID_STATEMENT;
+					return EVENT_HANDLED;
+				}
 				if (len > WIFI_SSID_MAX_LEN)
 				{
 					protocol_send_feedback((const char *)"WiFi SSID is too long");
@@ -212,10 +209,11 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 				sprintf((char *)str, "SSID>%s", wifi_settings.ssid);
 				protocol_send_feedback((const char *)str);
 			}
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "SCAN"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "SCAN"))
 		{
 			// Serial.println("[MSG:Scanning Networks]");
 			protocol_send_feedback((const char *)"Scanning Networks");
@@ -223,8 +221,7 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 			if (numSsid == -1)
 			{
 				protocol_send_feedback((const char *)"Failed to scan!");
-				while (true)
-					;
+				return EVENT_HANDLED;
 			}
 
 			// print the list of networks seen:
@@ -237,27 +234,37 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 				sprintf((char *)str, "%d) %s\tSignal:  %ddBm", netid, WiFi.SSID(netid), WiFi.RSSI(netid));
 				protocol_send_feedback((const char *)str);
 			}
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "SAVE"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "SAVE"))
 		{
 			settings_save(wifi_settings_offset, (uint8_t *)&wifi_settings, sizeof(wifi_settings_t));
 			protocol_send_feedback((const char *)"WiFi settings saved");
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "RESET"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "RESET"))
 		{
 			settings_erase(wifi_settings_offset, (uint8_t *)&wifi_settings, sizeof(wifi_settings_t));
 			protocol_send_feedback((const char *)"WiFi settings deleted");
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "MODE"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "MODE"))
 		{
 			if (has_arg)
 			{
+				int8_t len = parser_get_grbl_cmd_arg(arg, ARG_MAX_LEN);
+
+				if (len < 0)
+				{
+					*(cmd_params->error) = STATUS_INVALID_STATEMENT;
+					return EVENT_HANDLED;
+				}
 				int mode = atoi((const char *)arg) - 1;
 				if (mode >= 0)
 				{
@@ -281,12 +288,19 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 				protocol_send_feedback((const char *)"WiFi mode>AP");
 				break;
 			}
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "PASS") && has_arg)
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "PASS") && has_arg)
 		{
-			uint8_t len = strlen((const char *)arg);
+			int8_t len = parser_get_grbl_cmd_arg(arg, ARG_MAX_LEN);
+
+			if (len < 0)
+			{
+				*(cmd_params->error) = STATUS_INVALID_STATEMENT;
+				return EVENT_HANDLED;
+			}
 			if (len > WIFI_PASS_MAX_LEN)
 			{
 				protocol_send_feedback((const char *)"WiFi pass is too long");
@@ -294,10 +308,11 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 			memset(wifi_settings.pass, 0, sizeof(wifi_settings.pass));
 			strcpy(wifi_settings.pass, (const char *)arg);
 			protocol_send_feedback((const char *)"WiFi password modified");
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 
-		if (!strcmp((const char *)&grbl_cmd_str[4], "IP"))
+		if (!strcmp((const char *)&(cmd_params->cmd)[4], "IP"))
 		{
 			if (wifi_settings.wifi_on)
 			{
@@ -324,12 +339,15 @@ uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t
 				protocol_send_feedback((const char *)"WiFi is off");
 			}
 
-			return STATUS_OK;
+			*(cmd_params->error) = STATUS_OK;
+			return EVENT_HANDLED;
 		}
 	}
 #endif
-	return STATUS_INVALID_STATEMENT;
+	return EVENT_CONTINUE;
 }
+
+CREATE_EVENT_LISTENER(grbl_cmd, mcu_custom_grbl_cmd);
 #endif
 
 bool rp2040_wifi_clientok(void)
@@ -790,21 +808,21 @@ void rp2040_wifi_bt_init(void)
 #ifdef MCU_HAS_ENDPOINTS
 	FLASH_FS.begin();
 	flash_fs = {
-				.drive = 'C',
-				.open = flash_fs_open,
-				.read = flash_fs_read,
-				.write = flash_fs_write,
-				.seek = flash_fs_seek,
-				.available = flash_fs_available,
-				.close = flash_fs_close,
-				.remove = flash_fs_remove,
-				.opendir = flash_fs_opendir,
-				.mkdir = flash_fs_mkdir,
-				.rmdir = flash_fs_rmdir,
-				.next_file = flash_fs_next_file,
-				.finfo = flash_fs_info,
-				.next = NULL};
-		fs_mount(&flash_fs);
+			.drive = 'C',
+			.open = flash_fs_open,
+			.read = flash_fs_read,
+			.write = flash_fs_write,
+			.seek = flash_fs_seek,
+			.available = flash_fs_available,
+			.close = flash_fs_close,
+			.remove = flash_fs_remove,
+			.opendir = flash_fs_opendir,
+			.mkdir = flash_fs_mkdir,
+			.rmdir = flash_fs_rmdir,
+			.next_file = flash_fs_next_file,
+			.finfo = flash_fs_info,
+			.next = NULL};
+	fs_mount(&flash_fs);
 #endif
 #ifndef CUSTOM_OTA_ENDPOINT
 	httpUpdater.setup(&web_server, OTA_URI, update_username, update_password);
@@ -827,6 +845,10 @@ void rp2040_wifi_bt_init(void)
 	{
 		SerialBT.begin(BAUDRATE, SERIAL_8N1);
 	}
+#endif
+
+#ifdef BOARD_HAS_CUSTOM_SYSTEM_COMMANDS
+	ADD_EVENT_LISTENER(grbl_cmd, mcu_custom_grbl_cmd);
 #endif
 }
 
@@ -1037,17 +1059,17 @@ extern "C"
 
 	void rp2040_eeprom_flush(void)
 	{
-		#ifndef RP2040_RUN_MULTICORE
+#ifndef RP2040_RUN_MULTICORE
 		if (!EEPROM.commit())
 		{
 			protocol_send_feedback((const char *)" EEPROM write error");
 		}
-		#else
+#else
 		// signal other core to store EEPROM
 		rp2040.fifo.push(0);
 		// wait for signal back
 		rp2040.fifo.pop();
-		#endif
+#endif
 	}
 }
 #endif
@@ -1320,20 +1342,29 @@ extern "C"
 #include <SPI.h>
 extern "C"
 {
-	void mcu_spi_config(uint8_t mode, uint32_t freq)
+	void mcu_spi_config(uint8_t mode, uint32_t frequency)
 	{
+		COM_SPI.end();
 		COM_SPI.setRX(SPI_SDI_BIT);
 		COM_SPI.setTX(SPI_SDO_BIT);
 		COM_SPI.setSCK(SPI_CLK_BIT);
 		COM_SPI.setCS(SPI_CS_BIT);
-		COM_SPI.end();
 		COM_SPI.begin();
-		COM_SPI.beginTransaction(SPISettings(freq, 1 /*MSBFIRST*/, mode));
 	}
 
 	uint8_t mcu_spi_xmit(uint8_t data)
 	{
 		return COM_SPI.transfer(data);
+	}
+
+	void mcu_spi_start(uint8_t mode, uint32_t frequency)
+	{
+		COM_SPI.beginTransaction(SPISettings(frequency, 1 /*MSBFIRST*/, mode));
+	}
+
+	void mcu_spi_stop(void)
+	{
+		COM_SPI.endTransation();
 	}
 }
 

@@ -6,9 +6,67 @@
 
 # Changelog
 
-# Changelog
+## [1.9.4] - 20-04-2024 (republished)
 
-## [1.9.0] - unreleased
+[@patryk3211](https://github.com/patryk3211) - fixed STM32Fx boards SPI implementation (#699)
+
+### Added
+
+- added HAL control access to the SPI CS pin to avoid having to waste a DOUT pin to control it. (#704)
+
+### Changed
+
+- modified flags for ESP32 to force Arduino SPI version (some boards seem to have problems with the SDK version) (#695)
+- modified/merged entry point of user and architecture/board custom Grbl/System commands. This also fixed an issue that made impossible to pass arguments to user commands when the board had custom commands, since the buffer was parsed before command was evaluated for execution. (#696)
+- reverted #695 and #691 for ESP32 Arduino SPI code
+
+### Fixed
+
+- fixed STM32Fx boards compilation errors is probe pin was undefined (#698)
+- fixed STM32Fx boards SPI implementation (#699)
+- fixed ESP32 boards SPI frequency/mode configuration (#703)
+- fixed incomplete code propagation of #696. This prevented Grbl/System commands to propagate correctly and directly affected mount and unmount command of the SD card module (#705)
+- fixed file system commands parsing
+
+## [1.9.3] - 07-04-2024
+
+[@patryk3211](https://github.com/patryk3211) - fixed homing pulloff fail alarm code (#689) and 2 phase homing cycle (#690)
+
+### Added
+
+- added new option to do a 2 phase homing cycle. Instead of the default fast-seek/slow-pulloff the new option modifies the behavior to fast-seek/fast-pulloff/slow-seek/slow-pulloff. This might increase homing repeatability (#690)
+
+### Changed
+
+- modified homing cycle to make code smaller (#693)
+- improved softspi module and exposed HW SPI struct if available via softspi. This as several advantages and allows to share the same HW SPI in different speeds and modes. Also soft SPI now initializes pins on config. This fixed issues were the RTOS or Arduino modified the initial pin setting that was initialized by µCNC. (#691)
+
+### Fixed
+
+- fixed homing pulloff fail alarm code (#689)
+
+## [1.9.2] - 13-06-2024
+
+### Added
+
+- option to allow RS274NGC expression and numbered parameters parsing (#688)
+
+## [1.9.1] - 03-05-2024
+
+### Added
+
+- added new option to run the step generator interpolator in an ISR task and outside of the main loop. This should ensures the interpolator and the step ISR never gets starved and might aid to future code simplification (#685)
+
+### Changed
+
+- modified platformIO configuration files to include common libraries via the main platform.ini file (like u8g2)
+
+### Fixed
+
+- fixed G39/Height map clearing calls (#683)
+- fixed file system typo that caused to build errors (#682)
+
+## [1.9.0] - 18-04-2024
 
 ### Added
 
@@ -1608,6 +1666,10 @@ Version 1.1.0 comes with many added features and improvements over the previous 
 
 ### Initial release
 
+[1.9.4]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.4
+[1.9.3]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.3
+[1.9.2]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.2
+[1.9.1]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.1
 [1.9.0]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.0
 [1.9.0-beta]: https://github.com/Paciente8159/uCNC/releases/tag/v1.9.0-beta
 [1.8.11]: https://github.com/Paciente8159/uCNC/releases/tag/v1.8.11

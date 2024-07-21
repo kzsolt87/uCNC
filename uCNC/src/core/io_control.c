@@ -115,6 +115,15 @@ MCU_IO_CALLBACK void mcu_limits_changed_cb(void)
 				// changed limit is from the current mask
 				if ((limits_diff & limits_ref))
 				{
+					/**
+					 * Disabled for now. For re-evaluation
+					 */
+					// Changed limit is not active, don't trip the alarm
+					// if(!(limits_diff & limits)) 
+					// {
+					// 	return;
+					// }
+
 					// lock steps on the current limits
 					itp_lock_stepper(limits);
 
@@ -1254,6 +1263,11 @@ void io_set_pinvalue(uint8_t pin, uint8_t value)
 			io_set_output(DOUT31);
 			break;
 #endif
+#if ASSERT_PIN(SPI_CS)
+		case SPI_CS:
+			io_set_output(SPI_CS);
+			break;
+#endif
 		}
 	}
 	else
@@ -1529,6 +1543,11 @@ void io_set_pinvalue(uint8_t pin, uint8_t value)
 #if ASSERT_PIN(DOUT31)
 		case DOUT31:
 			io_clear_output(DOUT31);
+			break;
+#endif
+#if ASSERT_PIN(SPI_CS)
+		case SPI_CS:
+			io_clear_output(SPI_CS);
 			break;
 #endif
 		}

@@ -499,6 +499,14 @@ extern "C"
 	uint8_t mcu_spi_xmit(uint8_t data);
 #endif
 
+#ifndef mcu_spi_start
+	void mcu_spi_start(uint8_t mode, uint32_t frequency);
+#endif
+
+#ifndef mcu_spi_stop
+	void mcu_spi_stop(void);
+#endif
+
 #ifndef mcu_spi_config
 	void mcu_spi_config(uint8_t mode, uint32_t frequency);
 #endif
@@ -534,10 +542,6 @@ extern "C"
 	void mcu_i2c_config(uint32_t frequency);
 #endif
 
-#endif
-
-#ifdef BOARD_HAS_CUSTOM_SYSTEM_COMMANDS
-	uint8_t mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t next_char);
 #endif
 
 	/**

@@ -758,13 +758,6 @@ void __attribute__((weak)) mcu_io_reset(void)
 }
 #endif
 
-#ifdef BOARD_HAS_CUSTOM_SYSTEM_COMMANDS
-uint8_t __attribute__((weak)) mcu_custom_grbl_cmd(uint8_t *grbl_cmd_str, uint8_t grbl_cmd_len, uint8_t next_char)
-{
-	return STATUS_INVALID_STATEMENT;
-}
-#endif
-
 // ISR
 // New uint8_t handle strategy
 // All ascii will be sent to buffer and processed later (including comments)
@@ -846,5 +839,16 @@ void __attribute__((weak)) mcu_i2c_slave_cb(uint8_t *data, uint8_t *datalen)
 {
 }
 #endif
+#endif
 
+#if (defined(MCU_HAS_SPI))
+void __attribute__((weak)) mcu_spi_start(uint8_t mode, uint32_t frequency)
+{
+	// reapply port settings if port is shared
+	mcu_spi_config(mode, frequency);
+}
+
+void __attribute__((weak)) mcu_spi_stop(void)
+{
+}
 #endif

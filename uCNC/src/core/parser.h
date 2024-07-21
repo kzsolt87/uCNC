@@ -201,6 +201,20 @@ extern "C"
 #define LASER_PPI_VARPOWER_MODE 4
 #define PLASMA_THC_MODE 8
 
+#ifdef ENABLE_RS274NGC_EXPRESSIONS
+#ifndef RS274NGC_MAX_USER_VARS
+#define RS274NGC_MAX_USER_VARS 16
+#endif
+#ifndef MAX_PARSER_STACK_DEPTH
+#define MAX_PARSER_STACK_DEPTH 16
+#endif
+typedef struct parser_stack_
+{
+	float lhs;
+	uint8_t op;
+} parser_stack_t;
+#endif
+
 	// 34bytes in total
 	typedef struct
 	{
@@ -294,6 +308,9 @@ extern "C"
 #ifdef GCODE_PROCESS_LINE_NUMBERS
 		uint32_t line;
 #endif
+#ifdef ENABLE_RS274NGC_EXPRESSIONS
+float user_vars[RS274NGC_MAX_USER_VARS];
+#endif
 	} parser_state_t;
 
 	void parser_init(void);
@@ -351,6 +368,18 @@ extern "C"
 	// event_gcode_after_motion_handler
 	DECL_EVENT_HANDLER(gcode_after_motion);
 
+	// event_parse_token_handler
+	DECL_EVENT_HANDLER(parse_token);
+
+	// event_parser_get_modes_handler
+	DECL_EVENT_HANDLER(parser_get_modes);
+
+	// event_parser_reset_handler
+	DECL_EVENT_HANDLER(parser_reset);
+#endif
+
+#if (defined(ENABLE_PARSER_MODULES)||defined(BOARD_HAS_CUSTOM_SYSTEM_COMMANDS))
+
 	// event_grbl_cmd_handler
 	typedef struct grbl_cmd_args_
 	{
@@ -361,14 +390,7 @@ extern "C"
 	} grbl_cmd_args_t;
 	DECL_EVENT_HANDLER(grbl_cmd);
 
-	// event_parse_token_handler
-	DECL_EVENT_HANDLER(parse_token);
-
-	// event_parser_get_modes_handler
-	DECL_EVENT_HANDLER(parser_get_modes);
-
-	// event_parser_reset_handler
-	DECL_EVENT_HANDLER(parser_reset);
+	int8_t parser_get_grbl_cmd_arg(char *arg, int8_t max_len);
 #endif
 
 #ifdef __cplusplus
